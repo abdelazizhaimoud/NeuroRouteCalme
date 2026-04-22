@@ -1,0 +1,7 @@
+osmnx>=1.9
+geopandas>=0.14
+networkx>=3.2
+pandas>=2.0
+matplotlib>=3.8
+folium>=0.16
+pyogrio>=0.7

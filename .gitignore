@@ -1,2 +1,5 @@
-/outputs
-/cache
+outputs/
+cache/
+__pycache__/
+*.py[cod]
+.venv/
