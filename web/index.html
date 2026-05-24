@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroRoute Calme — Itinéraire accessible Casablanca</title>
+    <meta name="description" content="Trouvez l'itinéraire le plus calme et accessible à Casablanca, adapté aux personnes neurodivergentes.">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+
+    <!-- App CSS -->
+    <link rel="stylesheet" href="/web/style.css">
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar">
+        <!-- Header -->
+        <div class="sidebar-header">
+            <div class="logo">
+                <span class="logo-icon">🧠</span>
+                <div>
+                    <h1>NeuroRoute Calme</h1>
+                    <p class="subtitle">Casablanca — Itinéraire accessible</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div id="instructions" class="card instructions-card">
+            <div class="step-indicator">
+                <div class="step active" id="step-1-indicator">
+                    <span class="step-number">1</span>
+                    <span class="step-label">Départ</span>
+                </div>
+                <div class="step-divider"></div>
+                <div class="step" id="step-2-indicator">
+                    <span class="step-number">2</span>
+                    <span class="step-label">Arrivée</span>
+                </div>
+                <div class="step-divider"></div>
+                <div class="step" id="step-3-indicator">
+                    <span class="step-number">3</span>
+                    <span class="step-label">Résultats</span>
+                </div>
+            </div>
+            <p id="instruction-text" class="instruction-text">
+                Cliquez sur la carte pour placer le <strong>point de départ</strong>
+            </p>
+        </div>
+
+        <!-- Coordinates display -->
+        <div id="coords-display" class="card coords-card" style="display: none;">
+            <div class="coord-row">
+                <span class="coord-marker start-marker"></span>
+                <div>
+                    <span class="coord-label">Départ</span>
+                    <span class="coord-value" id="start-coords">—</span>
+                </div>
+            </div>
+            <div class="coord-row">
+                <span class="coord-marker end-marker"></span>
+                <div>
+                    <span class="coord-label">Arrivée</span>
+                    <span class="coord-value" id="end-coords">—</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading spinner -->
+        <div id="loading" class="card loading-card" style="display: none;">
+            <div class="spinner"></div>
+            <p>Calcul des itinéraires en cours...</p>
+            <p class="loading-sub">4 profils × Dijkstra</p>
+        </div>
+
+        <!-- Results -->
+        <div id="results" class="results-container" style="display: none;">
+            <h2 class="results-title">Itinéraires calculés</h2>
+            <div id="route-cards"></div>
+        </div>
+
+        <!-- Reset button -->
+        <button id="btn-reset" class="btn-reset" style="display: none;">
+            <span>↺</span> Recommencer
+        </button>
+
+        <!-- Footer -->
+        <div class="sidebar-footer">
+            <p>PFE — NeuroRoute Calme · Casablanca</p>
+        </div>
+    </aside>
+
+    <!-- Map -->
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+
+    <!-- App JS -->
+    <script src="/web/app.js"></script>
+</body>
+</html>

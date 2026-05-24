@@ -4,18 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neuroroute-calme"
-version = "0.1.0"
-description = "Pedestrian graph export and visualization pipeline for NeuroRoute Calme"
+version = "0.2.0"
+description = "Pedestrian route feature extraction and simulation for Casablanca"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
   "osmnx>=1.9",
   "geopandas>=0.14",
-  "networkx>=3.2",
   "pandas>=2.0",
-  "matplotlib>=3.8",
-  "folium>=0.16",
-  "pyogrio>=0.7"
+  "numpy>=1.24",
+  "shapely>=2.0"
 ]
 
 [project.scripts]
