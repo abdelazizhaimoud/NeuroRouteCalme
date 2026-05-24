@@ -1,5 +1,17 @@
-outputs/
-cache/
+# Python Virtual Environments
+.venv/
+venv/
+env/
 __pycache__/
 *.py[cod]
-.venv/
+*$py.class
+
+# Project specific data and caches
+cache/
+outputs/
+
+# IDEs and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
