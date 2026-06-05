@@ -135,6 +135,57 @@ html, body {
     margin-top: 2px;
 }
 
+/* City selector dropdown */
+.city-selector {
+    margin-top: 4px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--border-glass);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 4px 10px;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+
+.city-selector:hover,
+.city-selector:focus {
+    border-color: var(--accent-blue);
+    background: rgba(52, 152, 219, 0.1);
+}
+
+.city-selector option {
+    background: var(--bg-card-solid);
+    color: var(--text-primary);
+}
+
+/* ML Predicted badge */
+.ml-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 8px;
+    padding: 4px 10px;
+    background: rgba(155, 89, 182, 0.15);
+    border: 1px solid rgba(155, 89, 182, 0.3);
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--accent-purple);
+    animation: fadeIn 0.4s ease-out;
+}
+
+.ml-badge::before {
+    content: '🤖';
+    font-size: 12px;
+}
+
 /* ============================================================
    Cards (generic)
    ============================================================ */

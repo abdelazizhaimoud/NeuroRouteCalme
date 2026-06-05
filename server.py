@@ -36,16 +36,35 @@ app = Flask(__name__, static_folder=None)
 CORS(app)
 
 WEB_DIR = Path(__file__).parent / "web"
-PLACE_NAME = "Casablanca, Morocco"
+OUTPUTS_DIR = Path(__file__).parent / "outputs"
+
+CITIES = {
+    "casablanca": {
+        "name": "Casablanca, Morocco",
+        "label": "Casablanca",
+        "csv_path": OUTPUTS_DIR / "casablanca" / "routes_casablanca.csv",
+        "center": [33.5731, -7.6114],
+        "zoom": 13,
+        "ml_predicted": False,
+    },
+    "mohammedia": {
+        "name": "Mohammedia, Morocco",
+        "label": "Mohammedia",
+        "csv_path": OUTPUTS_DIR / "mohammedia" / "routes_mohammedia.csv",
+        "center": [33.6931, -7.3871],
+        "zoom": 14,
+        "ml_predicted": True,
+    }
+}
 
 # These are filled at startup by init_engine()
-_scored_graph = None
-_graph = None
+_scored_graphs = {}
+_graphs = {}
 
 
 def init_engine() -> None:
-    """Load graph and build scored graph (called once at startup)."""
-    global _scored_graph, _graph
+    """Load graph and build scored graph for all cities (called once at startup)."""
+    global _scored_graphs, _graphs
 
     print("=" * 60)
     print("  NeuroRoute Calme — Server Initialization")
@@ -53,24 +72,29 @@ def init_engine() -> None:
 
     t0 = time.time()
 
-    print("\n[1/3] Loading graph...")
-    _graph = fetch_graph(PLACE_NAME)
-    print(f"  Nodes: {_graph.number_of_nodes():,}  |  Edges: {_graph.number_of_edges():,}")
-
-    print("\n[2/3] Building scoring DataFrame...")
-    df = build_scoring_dataframe(
-        _graph,
-        place_name=PLACE_NAME,
-        use_verdure_query=False,
-        seed=42,
-        include_geometry=False,
-        compute_ml=False,
-    )
-    print(f"  {len(df):,} edges scored")
-    print(f"  score_calme: median={df['score_calme'].median():.3f}")
-
-    print("\n[3/3] Building scored graph...")
-    _scored_graph = build_scored_graph(_graph, df)
+    for city_id, city_info in CITIES.items():
+        print(f"\nInitializing {city_id}...")
+        
+        # 1. Load Graph
+        graph = fetch_graph(city_info["name"])
+        _graphs[city_id] = graph
+        print(f"  Nodes: {graph.number_of_nodes():,}  |  Edges: {graph.number_of_edges():,}")
+        
+        # 2. Load precomputed ML scores CSV
+        csv_path = city_info["csv_path"]
+        if not csv_path.exists():
+            print(f"  WARNING: {csv_path} not found. Skipping {city_id}.")
+            continue
+            
+        import pandas as pd
+        df = pd.read_csv(csv_path)
+        
+        # build_scored_graph expects u, v, key as columns, not index
+        
+        # 3. Build scored graph
+        scored_graph = build_scored_graph(graph, df)
+        _scored_graphs[city_id] = scored_graph
+        print(f"  Loaded {len(df):,} precomputed edges.")
 
     elapsed = time.time() - t0
     print(f"\n  Initialization complete in {elapsed:.1f}s")
@@ -128,11 +152,28 @@ PROFILE_META = {
 
 @app.route("/api/health", methods=["GET"])
 def api_health():
-    """Health check for mobile apps."""
+    """Health check."""
     return jsonify({
-        "status": "ready" if _scored_graph is not None else "loading",
-        "profiles": list(USER_PROFILES.keys())
+        "status": "ready" if _scored_graphs else "loading",
+        "profiles": list(USER_PROFILES.keys()),
+        "cities": list(CITIES.keys())
     })
+
+
+@app.route("/api/cities", methods=["GET"])
+def api_cities():
+    """Return available cities with metadata (center, zoom, ML badge)."""
+    cities_meta = {
+        city_id: {
+            "label": info["label"],
+            "center": info["center"],
+            "zoom": info["zoom"],
+            "ml_predicted": info["ml_predicted"],
+            "available": city_id in _scored_graphs,
+        }
+        for city_id, info in CITIES.items()
+    }
+    return jsonify({"cities": cities_meta})
 
 
 @app.route("/api/route", methods=["POST"])
@@ -140,42 +181,49 @@ def api_route():
     """Compute routes for all 4 profiles.
 
     Request JSON:
-        { "start_lat": float, "start_lon": float,
+        { "city": str,
+          "start_lat": float, "start_lon": float,
           "end_lat": float,   "end_lon": float }
 
     Response JSON:
         { "routes": { "<profile>": { "coords", "total_length_m", ... } },
           "profiles": { "<profile>": { "label", "description", "color" } } }
     """
-    if _scored_graph is None:
-        return jsonify({"error": "Server not ready — graph still loading"}), 503
+    if not _scored_graphs:
+        return jsonify({"error": "Graph not yet loaded"}), 503
 
-    data = request.get_json(silent=True)
+    data = request.json
     if not data:
         return jsonify({"error": "Missing JSON body"}), 400
 
-    try:
-        start_lat = float(data["start_lat"])
-        start_lon = float(data["start_lon"])
-        end_lat = float(data["end_lat"])
-        end_lon = float(data["end_lon"])
-    except (KeyError, TypeError, ValueError) as exc:
-        return jsonify({"error": f"Invalid coordinates: {exc}"}), 400
+    city_id = data.get("city", "casablanca")
+    if city_id not in _scored_graphs:
+        return jsonify({"error": f"Unknown city: {city_id}"}), 400
 
-    start_point = (start_lat, start_lon)
-    end_point = (end_lat, end_lon)
+    start_lat = data.get("start_lat")
+    start_lon = data.get("start_lon")
+    end_lat = data.get("end_lat")
+    end_lon = data.get("end_lon")
 
-    # Resolve nearest nodes once (avoid doing it 4 times)
+    if None in (start_lat, start_lon, end_lat, end_lon):
+        return jsonify({"error": "Missing coordinates"}), 400
+
+    start_point = (float(start_lat), float(start_lon))
+    end_point = (float(end_lat), float(end_lon))
+
+    scored_graph = _scored_graphs[city_id]
+
+    # Resolve nearest nodes once
     try:
-        start_node = ox.nearest_nodes(_scored_graph, X=start_lon, Y=start_lat)
-        end_node = ox.nearest_nodes(_scored_graph, X=end_lon, Y=end_lat)
+        start_node = ox.nearest_nodes(scored_graph, X=start_lon, Y=start_lat)
+        end_node = ox.nearest_nodes(scored_graph, X=end_lon, Y=end_lat)
     except Exception as exc:
         return jsonify({"error": f"Could not find nearest nodes: {exc}"}), 400
 
     routes = {}
     for profile in USER_PROFILES:
         t0 = time.time()
-        result = get_best_route(_scored_graph, start_node, end_node, profile=profile)
+        result = get_best_route(scored_graph, start_node, end_node, profile=profile)
         elapsed_ms = (time.time() - t0) * 1000
 
         if "error" in result:
@@ -185,8 +233,8 @@ def api_route():
         # Convert node IDs to [lat, lon] coordinates for the frontend
         coords = []
         for node_id in result["path"]:
-            if node_id in _scored_graph.nodes:
-                nd = _scored_graph.nodes[node_id]
+            if node_id in scored_graph.nodes:
+                nd = scored_graph.nodes[node_id]
                 coords.append([float(nd["y"]), float(nd["x"])])
 
         routes[profile] = {
@@ -203,6 +251,8 @@ def api_route():
     return jsonify({
         "routes": routes,
         "profiles": PROFILE_META,
+        "city": city_id,
+        "ml_predicted": CITIES[city_id]["ml_predicted"],
         "start": {"lat": start_lat, "lon": start_lon},
         "end": {"lat": end_lat, "lon": end_lon},
     })
@@ -210,8 +260,8 @@ def api_route():
 
 @app.route("/api/route/<profile>", methods=["POST"])
 def api_route_single(profile):
-    """Compute route for a single profile. Optimized for mobile apps."""
-    if _scored_graph is None:
+    """Compute route for a single profile. Supports city param."""
+    if not _scored_graphs:
         return jsonify({"error": "Server not ready — graph still loading"}), 503
 
     if profile not in USER_PROFILES:
@@ -221,6 +271,10 @@ def api_route_single(profile):
     if not data:
         return jsonify({"error": "Missing JSON body"}), 400
 
+    city_id = data.get("city", "casablanca")
+    if city_id not in _scored_graphs:
+        return jsonify({"error": f"Unknown city: {city_id}"}), 400
+
     try:
         start_lat = float(data["start_lat"])
         start_lon = float(data["start_lon"])
@@ -229,14 +283,15 @@ def api_route_single(profile):
     except (KeyError, TypeError, ValueError) as exc:
         return jsonify({"error": f"Invalid coordinates: {exc}"}), 400
 
+    scored_graph = _scored_graphs[city_id]
     try:
-        start_node = ox.nearest_nodes(_scored_graph, X=start_lon, Y=start_lat)
-        end_node = ox.nearest_nodes(_scored_graph, X=end_lon, Y=end_lat)
+        start_node = ox.nearest_nodes(scored_graph, X=start_lon, Y=start_lat)
+        end_node = ox.nearest_nodes(scored_graph, X=end_lon, Y=end_lat)
     except Exception as exc:
         return jsonify({"error": f"Could not find nearest nodes: {exc}"}), 400
 
     t0 = time.time()
-    result = get_best_route(_scored_graph, start_node, end_node, profile=profile)
+    result = get_best_route(scored_graph, start_node, end_node, profile=profile)
     elapsed_ms = (time.time() - t0) * 1000
 
     if "error" in result:
@@ -244,8 +299,8 @@ def api_route_single(profile):
 
     coords = []
     for node_id in result["path"]:
-        if node_id in _scored_graph.nodes:
-            nd = _scored_graph.nodes[node_id]
+        if node_id in scored_graph.nodes:
+            nd = scored_graph.nodes[node_id]
             coords.append([float(nd["y"]), float(nd["x"])])
 
     return jsonify({
@@ -260,6 +315,8 @@ def api_route_single(profile):
             "compute_ms": round(elapsed_ms, 1),
         },
         "profile": PROFILE_META.get(profile, {}),
+        "city": city_id,
+        "ml_predicted": CITIES[city_id]["ml_predicted"],
         "start": {"lat": start_lat, "lon": start_lon},
         "end": {"lat": end_lat, "lon": end_lon},
     })

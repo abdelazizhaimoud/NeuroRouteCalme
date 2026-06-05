@@ -964,7 +964,7 @@ def export_dataframe(df: pd.DataFrame, output_dir: str = "outputs") -> Path:
 
     # Select and order final columns
     final_columns = [
-        "segment_id", "u", "v",
+        "segment_id", "u", "v", "key",
         "longueur", "temps", "type_route", "verdure",
         "proximite_principales", "bruit", "densite",
         "score_calme", "score_ml",

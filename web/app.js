@@ -20,6 +20,7 @@ const state = {
     routeLayers: {},     // { profileName: L.polyline }
     profileMeta: {},     // from /api/profiles
     routeData: null,     // full API response
+    city: 'casablanca'   // selected city
 };
 
 // ============================================================
@@ -60,6 +61,29 @@ const $btnReset = document.getElementById('btn-reset');
 const $step1 = document.getElementById('step-1-indicator');
 const $step2 = document.getElementById('step-2-indicator');
 const $step3 = document.getElementById('step-3-indicator');
+
+const $citySelector = document.getElementById('city-selector');
+const $mlBadge = document.getElementById('ml-badge');
+
+// City Coordinates for recentering
+const CITY_COORDS = {
+    'casablanca': [33.5731, -7.6114],
+    'mohammedia': [33.6931, -7.3871]
+};
+
+$citySelector.addEventListener('change', function(e) {
+    state.city = e.target.value;
+    const coords = CITY_COORDS[state.city] || CITY_COORDS['casablanca'];
+    
+    // Toggle ML badge
+    $mlBadge.style.display = state.city === 'mohammedia' ? 'inline-flex' : 'none';
+    
+    // Reset app state
+    $btnReset.click();
+    
+    // Recenter map
+    map.setView(coords, state.city === 'mohammedia' ? 14 : 13);
+});
 
 // ============================================================
 //  Custom Markers
@@ -156,6 +180,7 @@ async function computeRoutes() {
     $btnReset.style.display = 'none';
 
     const body = {
+        city: state.city,
         start_lat: state.startLatLng.lat,
         start_lon: state.startLatLng.lng,
         end_lat: state.endLatLng.lat,
@@ -427,8 +452,9 @@ $btnReset.addEventListener('click', function () {
 
     updateStepUI();
 
-    // Recenter map
-    map.setView([33.5731, -7.6114], 13);
+    // Recenter map to selected city
+    const coords = CITY_COORDS[state.city] || CITY_COORDS['casablanca'];
+    map.setView(coords, 13);
 });
 
 // ============================================================
