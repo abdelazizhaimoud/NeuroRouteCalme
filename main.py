@@ -762,19 +762,21 @@ def build_scored_graph(graph, df: pd.DataFrame) -> nx.MultiDiGraph:
     """Assign calm scores and profile costs as edge weights on the networkx graph."""
     scored = graph.copy()
 
-    required = ["u", "v", "key", "score_calme", "temps"] + [f"cost_{p}" for p in USER_PROFILES.keys()]
+    required = ["u", "v", "score_calme", "temps"] + [f"cost_{p}" for p in USER_PROFILES.keys()]
     missing = [c for c in required if c not in df.columns]
     if missing:
         raise ValueError(
             "build_scored_graph: DataFrame missing required columns: " + ", ".join(missing)
         )
 
+    has_key = "key" in df.columns
+
     # Build a lookup: (u, v, key) -> dict of costs
     cost_lookup: dict[tuple[int, int, int], dict[str, float]] = {}
     for row in df.itertuples(index=False):
         u = int(getattr(row, "u"))
         v = int(getattr(row, "v"))
-        k = int(getattr(row, "key"))
+        k = int(getattr(row, "key")) if has_key else 0
         costs = {f"cost_{p}": float(getattr(row, f"cost_{p}")) for p in USER_PROFILES.keys()}
         costs["score_calme"] = float(getattr(row, "score_calme"))
         costs["temps"] = float(getattr(row, "temps"))
@@ -957,10 +959,12 @@ def demo_routing(scored_graph: nx.MultiDiGraph) -> None:
 #  Step 6 — Export
 # ---------------------------------------------------------------------------
 
-def export_dataframe(df: pd.DataFrame, output_dir: str = "outputs") -> Path:
+def export_dataframe(df: pd.DataFrame, output_dir: str = "outputs", place_name: str = "") -> Path:
     """Write the final DataFrame to CSV (+ parquet if available)."""
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    slug = slugify(place_name) if place_name else "casablanca"
 
     # Select and order final columns
     final_columns = [
@@ -976,13 +980,13 @@ def export_dataframe(df: pd.DataFrame, output_dir: str = "outputs") -> Path:
     df_out = df[final_columns].copy()
 
     # CSV
-    csv_path = out_dir / "routes_casablanca.csv"
+    csv_path = out_dir / f"routes_{slug}.csv"
     df_out.to_csv(csv_path, index=False)
     print(f"\n  CSV: {csv_path}")
 
     # Parquet (optional)
     try:
-        parquet_path = out_dir / "routes_casablanca.parquet"
+        parquet_path = out_dir / f"routes_{slug}.parquet"
         df_out.to_parquet(parquet_path, index=False)
         print(f"  Parquet: {parquet_path}")
     except Exception:
@@ -1073,7 +1077,7 @@ def main(argv: list[str] | None = None) -> int:
             demo_routing(scored_graph)
 
         # Step 6 — Export
-        csv_path = export_dataframe(df, output_dir=args.output_dir)
+        csv_path = export_dataframe(df, output_dir=args.output_dir, place_name=args.place_name)
         print(f"\nDone! Output: {csv_path}")
         return 0
 

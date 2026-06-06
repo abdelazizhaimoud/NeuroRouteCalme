@@ -42,7 +42,7 @@ CITIES = {
     "casablanca": {
         "name": "Casablanca, Morocco",
         "label": "Casablanca",
-        "csv_path": OUTPUTS_DIR / "casablanca" / "routes_casablanca.csv",
+        "csv_path": OUTPUTS_DIR / "routes_casablanca.csv",
         "center": [33.5731, -7.6114],
         "zoom": 13,
         "ml_predicted": False,
@@ -50,11 +50,11 @@ CITIES = {
     "mohammedia": {
         "name": "Mohammedia, Morocco",
         "label": "Mohammedia",
-        "csv_path": OUTPUTS_DIR / "mohammedia" / "routes_mohammedia.csv",
+        "csv_path": OUTPUTS_DIR / "routes_mohammedia.csv",
         "center": [33.6931, -7.3871],
         "zoom": 14,
         "ml_predicted": True,
-    }
+    },
 }
 
 # These are filled at startup by init_engine()
