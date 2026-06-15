@@ -19,6 +19,9 @@ from pathlib import Path
 from flask import Flask, jsonify, request, send_from_directory, send_file
 from flask_cors import CORS
 
+from db import db
+from routes_api import init_routes
+
 from main import (
     USER_PROFILES,
     build_scored_graph,
@@ -34,6 +37,12 @@ import osmnx as ox
 
 app = Flask(__name__, static_folder=None)
 CORS(app)
+
+# --- Database ---
+DB_PATH = str(Path(__file__).parent / "neuroroute.db")
+app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+db.init_app(app)
 
 WEB_DIR = Path(__file__).parent / "web"
 OUTPUTS_DIR = Path(__file__).parent / "outputs"
@@ -65,6 +74,10 @@ _graphs = {}
 def init_engine() -> None:
     """Load graph and build scored graph for all cities (called once at startup)."""
     global _scored_graphs, _graphs
+
+    # Ensure database tables exist
+    with app.app_context():
+        db.create_all()
 
     print("=" * 60)
     print("  NeuroRoute Calme — Server Initialization")
@@ -329,11 +342,18 @@ def api_profiles():
 
 
 # ---------------------------------------------------------------------------
+#  Auth, Favorites, History, Place History API routes
+# ---------------------------------------------------------------------------
+
+init_routes(app)
+
+
+# ---------------------------------------------------------------------------
 #  CLI + main
 # ---------------------------------------------------------------------------
 
 def parse_args(argv=None):
-    parser = argparse.ArgumentParser(description="NeuroRoute Calme — Web Server")
+    parser = argparse.ArgumentParser(description="NeuroRoute Calime — Web Server")
     parser.add_argument("--host", default="127.0.0.1", help="Host (default: 127.0.0.1)")
     parser.add_argument("--port", type=int, default=5000, help="Port (default: 5000)")
     parser.add_argument("--debug", action="store_true", help="Flask debug mode")
