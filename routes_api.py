@@ -282,6 +282,20 @@ def init_routes(app):
         db.session.commit()
         return jsonify({"history": entry.to_dict()}), 201
 
+    @app.route("/api/history/<int:history_id>", methods=["PUT"])
+    @require_auth
+    def update_history(history_id):
+        entry = RouteHistory.query.filter_by(
+            id=history_id, user_id=g.current_user.id
+        ).first()
+        if not entry:
+            return jsonify({"error": "History entry not found"}), 404
+        data = request.get_json(silent=True) or {}
+        if "end_name" in data:
+            entry.end_name = data["end_name"]
+        db.session.commit()
+        return jsonify({"history": entry.to_dict()})
+
     @app.route("/api/history/<int:history_id>", methods=["DELETE"])
     @require_auth
     def delete_history(history_id):
